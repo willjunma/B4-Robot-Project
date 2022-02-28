@@ -17,7 +17,7 @@ AnalogInputPin cds(FEHIO::P1_0);
 
 void move_forward(int percent, int counts)
 {
-    //Reset encoder counts
+    //Reset encoder count
     right_encoder.ResetCounts();
     left_encoder.ResetCounts();
 
