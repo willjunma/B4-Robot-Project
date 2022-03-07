@@ -2,6 +2,7 @@
 #include <FEHIO.h>
 #include <FEHUtility.h>
 #include <FEHMotor.h>
+#include <FEHServo.h>
 #include <FEHRPS.h>
 #define COUNTSPERINCH 40.49
 #define REDLIGHT .2
@@ -9,10 +10,12 @@
 #define NOLIGHT 2.5
 
 //Declarations for encoders & motors
-DigitalEncoder right_encoder(FEHIO::P0_0);
-DigitalEncoder left_encoder(FEHIO::P0_1);
+DigitalEncoder left_encoder(FEHIO::P0_0);
+DigitalEncoder right_encoder(FEHIO::P0_1);
 FEHMotor left_motor(FEHMotor::Motor0,9.0);
 FEHMotor right_motor(FEHMotor::Motor1,9.0);
+FEHServo ticket_servo(FEHServo::Servo5);
+FEHServo tray_servo(FEHServo::Servo7);
 AnalogInputPin cds(FEHIO::P1_0);
 
 void move_forward(int percent, int counts)
@@ -152,13 +155,111 @@ void jukebox_task(float light_value) {
 
 }
 
+void tray_task () {
+    //Set motor percent and theoretical thread counts
+    int motor_percent = 25;
+    int expected_counts = 7.5 * COUNTSPERINCH;
+    int turn_distance = (25.13274/2) * COUNTSPERINCH;
+
+    //Initialize tray servo 
+    tray_servo.SetMin(575);
+    tray_servo.SetMax(2450);
+    tray_servo.SetDegree(175);
+    Sleep(1.0);
+
+    //Move forward 7.5 inches
+    move_forward(motor_percent, expected_counts);
+
+    //Turn 180 degrees
+    turn_left(motor_percent, turn_distance);
+    motor_percent = -25;
+    turn_distance = 15 * COUNTSPERINCH;
+    turn_right(motor_percent, turn_distance);
+
+    //Move forward and then turn 45 degrees
+    expected_counts = 12 * COUNTSPERINCH;
+    turn_distance = 9 * COUNTSPERINCH;
+    move_forward(motor_percent, expected_counts);
+    turn_left(motor_percent, turn_distance);
+
+    //Move forward 2.5 inches
+    expected_counts = 2.5 * COUNTSPERINCH;
+    move_forward(motor_percent, expected_counts);  
+
+    //Move servo arm
+    tray_servo.SetDegree(155);
+    Sleep(2.0);
+    tray_servo.SetDegree(175);
+
+    //Turn to original position and then move backwards
+    motor_percent = 25;
+    move_forward(motor_percent, expected_counts);  
+    turn_distance = 12 * COUNTSPERINCH;
+    expected_counts = 5 * COUNTSPERINCH;
+    turn_left(motor_percent, turn_distance);
+    move_forward(motor_percent, expected_counts);
+
+    //Turn 45 degrees and then move up the ramp
+    turn_distance = 13 * COUNTSPERINCH;
+    turn_right(motor_percent, turn_distance);
+    motor_percent = -40;
+    expected_counts = 34 * COUNTSPERINCH;
+    move_forward(motor_percent, expected_counts);
+}
+
+void ticket_task() {
+    //Initialize the ticket servo
+    ticket_servo.SetMin(550);
+    ticket_servo.SetMax(2485);
+    ticket_servo.SetDegree(0);
+
+    //Set motor speed and initial turn and movement distances
+    int motor_percent = 25;
+    int turn_distance = 12.56637 * COUNTSPERINCH;
+    int expected_counts = 2.45 * COUNTSPERINCH;
+
+    //Turn right and move forward 2.45 inches
+    turn_left(motor_percent, turn_distance);
+    move_forward(motor_percent, expected_counts);
+
+    //Turn left and move forward 2.25 inches
+    turn_distance = 10.5 * COUNTSPERINCH;
+    turn_right(motor_percent, turn_distance);
+    expected_counts = 2.25 * COUNTSPERINCH;
+    move_forward(motor_percent, expected_counts);
+
+    //Extend the ticket arm
+    Sleep(2.0);
+    ticket_servo.SetDegree(180);
+    Sleep(1.0);
+
+    //Turn left to move the ticket and retract the ticket arm
+    turn_distance = 10 * COUNTSPERINCH;
+    motor_percent = -40;
+    turn_left(motor_percent, turn_distance);
+    motor_percent = 40;
+    turn_right(motor_percent, turn_distance);
+    Sleep(1.0);
+    ticket_servo.SetDegree(0);
+
+    //Turn left
+    motor_percent = 40;
+    turn_distance = 10 * COUNTSPERINCH;
+    turn_right(motor_percent, turn_distance);
+
+    //Move robot towards burger flipper
+    motor_percent = 25;
+    expected_counts = 30 * COUNTSPERINCH;
+    move_forward(motor_percent, expected_counts);
+}
+
 int main(void)
 {
-
-    while (1){
+    float time = TimeNow();
+     while (TimeNow() - time < 360.0){
     //Constantly reads the CDS value
     float light_value = cds.Value();
-
+    
     //Begins if light is red
     if (light_value < BLUELIGHT) {
         LCD.Clear(BLACK);
@@ -170,7 +271,8 @@ int main(void)
 
         //Begins the jukebox task
         while (1) {
-            jukebox_task(light_value);
+            tray_task();
+            ticket_task();
             break;
         }
 
@@ -180,7 +282,8 @@ int main(void)
         LCD.WriteLine("The task has completed");
         }
         }
-    
+
     return 0;
 }
+
 
