@@ -12,10 +12,11 @@
 //Declarations for encoders & motors
 DigitalEncoder left_encoder(FEHIO::P0_0);
 DigitalEncoder right_encoder(FEHIO::P0_1);
-FEHMotor left_motor(FEHMotor::Motor0,9.0);
-FEHMotor right_motor(FEHMotor::Motor1,9.0);
+FEHMotor left_motor(FEHMotor::Motor1,9.0);
+FEHMotor right_motor(FEHMotor::Motor0,9.0);
+FEHServo burger_servo(FEHServo::Servo7);
 FEHServo ticket_servo(FEHServo::Servo5);
-FEHServo tray_servo(FEHServo::Servo7);
+FEHServo tray_servo(FEHServo::Servo4);
 AnalogInputPin cds(FEHIO::P1_0);
 
 void move_forward(int percent, int counts)
@@ -253,6 +254,70 @@ void ticket_task() {
     move_forward(motor_percent, expected_counts);
 }
 
+void burger_task() {
+    //Set motor percent and theoretical thread counts
+    int motor_percent = 25;
+    int expected_counts = 14 * COUNTSPERINCH;
+    int turn_distance = 6.283185 * COUNTSPERINCH;
+    burger_servo.SetMin(550);
+    burger_servo.SetMax(2485);
+
+    //Move forward 10 inches and turn right 45 degrees
+    move_forward(motor_percent, expected_counts);
+    turn_right(motor_percent, turn_distance);
+
+    motor_percent = 40;
+    expected_counts = 28 * COUNTSPERINCH;
+    move_forward(motor_percent, expected_counts);
+
+    motor_percent = 25;
+    turn_distance = 2 * 6.283185 * COUNTSPERINCH;
+    turn_right(motor_percent, turn_distance);
+
+    turn_distance = 12 * COUNTSPERINCH;
+    turn_left(motor_percent, turn_distance);
+
+    expected_counts = 4.5 * COUNTSPERINCH;
+    move_forward(motor_percent, expected_counts);
+
+    burger_servo.SetMin(502);
+    burger_servo.SetMax(2350);
+
+    burger_servo.SetDegree(0);
+    Sleep(2.0);
+    burger_servo.SetDegree(100);
+    Sleep(2.0);
+    burger_servo.SetDegree(90);
+
+    motor_percent = -25;
+    expected_counts = 2 * COUNTSPERINCH;
+    move_forward(motor_percent, expected_counts);
+
+    turn_distance = 2.5 * COUNTSPERINCH;
+    turn_left(motor_percent, turn_distance);
+    burger_servo.SetDegree(90);
+
+    motor_percent = 25;
+    expected_counts = 3.25 * COUNTSPERINCH;
+    move_forward(motor_percent, expected_counts);
+    burger_servo.SetDegree(0);
+
+}
+
+void icecream_task() {
+    int motor_percent = -25;
+    int expected_counts = 13 * COUNTSPERINCH;
+    int turn_distance = 16 * COUNTSPERINCH;
+
+    turn_left(motor_percent, turn_distance);
+    move_forward(motor_percent, expected_counts);
+
+    tray_servo.SetMin(550);
+    tray_servo.SetMax(2450);
+    tray_servo.SetDegree(2);
+
+}
+
 int main(void)
 {
     float time = TimeNow();
@@ -271,8 +336,8 @@ int main(void)
 
         //Begins the jukebox task
         while (1) {
-            tray_task();
-            ticket_task();
+            burger_task();
+            icecream_task();
             break;
         }
 
@@ -285,5 +350,3 @@ int main(void)
 
     return 0;
 }
-
-
